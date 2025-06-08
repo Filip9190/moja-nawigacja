@@ -3,40 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Śledzenie trasy GPS</title>
+  <title>Śledzenie Trasy GPS</title>
   <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
     #map {
-      height: 90vh;
+      height: 100%;
       width: 100%;
+      background-color: #f0f0f0; /* Jasne tło, jakby pusta mapa */
     }
     button {
-      margin-top: 20px;
-      padding: 10px;
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
       font-size: 16px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-<h2>Śledzenie trasy GPS</h2>
+<h2>Śledzenie Trasy GPS</h2>
 <div id="map"></div>
-<button id="saveRouteBtn">Zapisz trasę</button>
+<button id="saveRouteBtn">Zapisz Trasę</button>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  let map = L.map('map').setView([52.2297, 21.0122], 13); // Początkowa lokalizacja - Warszawa
+  // Tworzymy pustą mapę
+  let map = L.map('map', {
+    center: [0, 0], // Punkt początkowy
+    zoom: 2,         // Zoom ustawiony na szeroką mapę, aby zacząć
+    zoomControl: false, // Usuwamy domyślny kontroler zoom
+    dragging: false, // Wyłączamy przeciąganie mapy
+    touchZoom: false // Wyłączamy możliwość zoomowania dotykiem
+  });
 
-  // Dodajemy mapę OpenStreetMap (jest darmowa i bez klucza API)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
+  // Tylko tło
+  L.rectangle([[90, 180], [-90, -180]], {
+    color: "#000",
+    weight: 1,
+    fillOpacity: 0,
   }).addTo(map);
 
-  let route = []; // Tablica do przechowywania trasy
-  let polyline = L.polyline(route, { color: 'blue' }).addTo(map); // Rysowanie trasy
+  let route = [];  // Tablica do przechowywania punktów trasy
+  let polyline = L.polyline(route, { color: 'blue' }).addTo(map); // Trasa
 
-  let marker;
+  let marker; // Marker do śledzenia lokalizacji
 
-  // Funkcja do aktualizacji lokalizacji na mapie
+  // Funkcja do aktualizacji lokalizacji
   function updateLocation(position) {
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
@@ -54,10 +75,10 @@
     }
 
     // Przemieszczamy mapę do nowej lokalizacji
-    map.panTo(newPos);
+    map.setView(newPos, 15); // Zwiększając zoom
   }
 
-  // Obsługuje błędy (np. brak dostępu do GPS)
+  // Funkcja obsługująca błędy
   function showError(error) {
     switch (error.code) {
       case error.PERMISSION_DENIED:
@@ -71,10 +92,11 @@
         break;
       default:
         alert("Nieznany błąd.");
+        break;
     }
   }
 
-  // Sprawdzamy, czy geolokalizacja jest dostępna w przeglądarce
+  // Sprawdzamy, czy geolokalizacja jest dostępna
   if (navigator.geolocation) {
     navigator.geolocation.watchPosition(updateLocation, showError, {
       enableHighAccuracy: true
@@ -83,20 +105,20 @@
     alert("Geolokalizacja nie jest wspierana przez tę przeglądarkę.");
   }
 
-  // Funkcja do zapisywania trasy
+  // Zapisz trasę
   document.getElementById('saveRouteBtn').addEventListener('click', function() {
     if (route.length === 0) {
       alert('Nie nagrano żadnej trasy.');
       return;
     }
 
-    // Zapisujemy trasę w formacie JSON (możesz później użyć tego do przechowywania w bazie danych)
+    // Zapisujemy trasę w formacie JSON
     const routeData = {
       route: route.map(([lat, lng]) => ({ lat, lng })),
       timestamp: new Date().toISOString()
     };
 
-    // Tworzymy plik JSON z trasą i umożliwiamy pobranie
+    // Tworzymy plik JSON z trasą
     const blob = new Blob([JSON.stringify(routeData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 
