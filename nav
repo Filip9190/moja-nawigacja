@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nagrywarka trasy GPS - web</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <style>
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Nagrywarka trasy GPS (web)</h2>
+  <div id="map"></div>
+  <button id="saveBtn">Zapisz trasę (JSON)</button>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    let map = L.map('map').setView([52.2297, 21.0122], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+
+    let route = [];
+    let polyline = L.polyline(route, { color: 'blue' }).addTo(map);
+    let marker;
+
+    function onLocationFound(e) {
+      const latlng = e.latlng;
+      route.push([latlng.lat, latlng.lng]);
+      polyline.setLatLngs(route);
+
+      if (marker) {
+        marker.setLatLng(latlng);
+      } else {
+        marker = L.marker(latlng).addTo(map);
+      }
+
+      map.panTo(latlng);
+    }
+
+    function onLocationError(e) {
+      alert(e.message);
+    }
+
+    // Śledzenie lokalizacji na żywo
+    map.locate({ watch: true, setView: false, enableHighAccuracy: true });
+
+    map.on('locationfound', onLocationFound);
+    map.on('locationerror', onLocationError);
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      if (route.length === 0) {
+        alert('Brak zapisanej trasy');
+        return;
+      }
+      const data = {
+        route: route.map(([lat, lng]) => ({ lat, lng })),
+        timestamp: new Date().toISOString(),
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'trasa_gps.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
