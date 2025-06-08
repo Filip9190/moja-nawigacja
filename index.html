@@ -1,84 +1,111 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Nagrywarka trasy GPS - web</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Śledzenie trasy GPS</title>
   <style>
     #map {
       height: 90vh;
       width: 100%;
     }
     button {
-      margin: 10px;
-      padding: 10px 20px;
+      margin-top: 20px;
+      padding: 10px;
       font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <h2>Nagrywarka trasy GPS (web)</h2>
-  <div id="map"></div>
-  <button id="saveBtn">Zapisz trasę (JSON)</button>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    let map = L.map('map').setView([52.2297, 21.0122], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-    }).addTo(map);
+<h2>Śledzenie trasy GPS</h2>
+<div id="map"></div>
+<button id="saveRouteBtn">Zapisz trasę</button>
 
-    let route = [];
-    let polyline = L.polyline(route, { color: 'blue' }).addTo(map);
-    let marker;
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  let map = L.map('map').setView([52.2297, 21.0122], 13); // Początkowa lokalizacja - Warszawa
 
-    function onLocationFound(e) {
-      const latlng = e.latlng;
-      route.push([latlng.lat, latlng.lng]);
-      polyline.setLatLngs(route);
+  // Dodajemy mapę OpenStreetMap (jest darmowa i bez klucza API)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+  }).addTo(map);
 
-      if (marker) {
-        marker.setLatLng(latlng);
-      } else {
-        marker = L.marker(latlng).addTo(map);
-      }
+  let route = []; // Tablica do przechowywania trasy
+  let polyline = L.polyline(route, { color: 'blue' }).addTo(map); // Rysowanie trasy
 
-      map.panTo(latlng);
+  let marker;
+
+  // Funkcja do aktualizacji lokalizacji na mapie
+  function updateLocation(position) {
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const newPos = [lat, lng];
+
+    // Dodajemy nowy punkt trasy
+    route.push(newPos);
+    polyline.setLatLngs(route);
+
+    // Ustawiamy marker na nową lokalizację
+    if (marker) {
+      marker.setLatLng(newPos);
+    } else {
+      marker = L.marker(newPos).addTo(map);
     }
 
-    function onLocationError(e) {
-      alert(e.message);
+    // Przemieszczamy mapę do nowej lokalizacji
+    map.panTo(newPos);
+  }
+
+  // Obsługuje błędy (np. brak dostępu do GPS)
+  function showError(error) {
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        alert("Brak dostępu do lokalizacji.");
+        break;
+      case error.POSITION_UNAVAILABLE:
+        alert("Nie można uzyskać lokalizacji.");
+        break;
+      case error.TIMEOUT:
+        alert("Upłynął czas oczekiwania na lokalizację.");
+        break;
+      default:
+        alert("Nieznany błąd.");
     }
+  }
 
-    // Śledzenie lokalizacji na żywo
-    map.locate({ watch: true, setView: false, enableHighAccuracy: true });
-
-    map.on('locationfound', onLocationFound);
-    map.on('locationerror', onLocationError);
-
-    document.getElementById('saveBtn').addEventListener('click', () => {
-      if (route.length === 0) {
-        alert('Brak zapisanej trasy');
-        return;
-      }
-      const data = {
-        route: route.map(([lat, lng]) => ({ lat, lng })),
-        timestamp: new Date().toISOString(),
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'trasa_gps.json';
-      a.click();
-      URL.revokeObjectURL(url);
+  // Sprawdzamy, czy geolokalizacja jest dostępna w przeglądarce
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(updateLocation, showError, {
+      enableHighAccuracy: true
     });
-  </script>
+  } else {
+    alert("Geolokalizacja nie jest wspierana przez tę przeglądarkę.");
+  }
+
+  // Funkcja do zapisywania trasy
+  document.getElementById('saveRouteBtn').addEventListener('click', function() {
+    if (route.length === 0) {
+      alert('Nie nagrano żadnej trasy.');
+      return;
+    }
+
+    // Zapisujemy trasę w formacie JSON (możesz później użyć tego do przechowywania w bazie danych)
+    const routeData = {
+      route: route.map(([lat, lng]) => ({ lat, lng })),
+      timestamp: new Date().toISOString()
+    };
+
+    // Tworzymy plik JSON z trasą i umożliwiamy pobranie
+    const blob = new Blob([JSON.stringify(routeData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'trasa.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
 </body>
 </html>
